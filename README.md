@@ -8,7 +8,7 @@ A modern, interactive web application for tracking daily habits and tasks. Built
 
 ## 🚀 Live Demo
 
-[Try the live demo here](#) *(Add your deployed URL when available)*
+[Try the live demo here](https://DFromb66.pythonanywhere.com) 🎯
 
 ## ✨ Features
 
