@@ -171,6 +171,11 @@ async function renderCalendar() {
                            String(today.getDate()).padStart(2, '0');
             const isToday = dateStr === todayStr;
             
+            // Debug logging for today highlighting
+            if (isToday) {
+                console.log('Today cell found:', dateStr, 'for day:', day);
+            }
+            
             cell.className = 'habit-cell';
             if (isToday) cell.classList.add('today');
             
