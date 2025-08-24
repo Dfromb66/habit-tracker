@@ -317,4 +317,4 @@ def cleanup_duplicates():
     return jsonify({'success': True, 'deleted_count': deleted_count})
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 
