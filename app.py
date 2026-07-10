@@ -17,6 +17,7 @@ def init_db():
             name TEXT NOT NULL,
             icon TEXT NOT NULL,
             color TEXT DEFAULT '#007bff',
+            sort_order INTEGER,
             created_date DATE DEFAULT CURRENT_DATE
         )
     ''')
@@ -27,6 +28,20 @@ def init_db():
     except sqlite3.OperationalError:
         # Column already exists
         pass
+
+    # Add sort_order column if it doesn't exist (for existing databases)
+    try:
+        cursor.execute('ALTER TABLE habits ADD COLUMN sort_order INTEGER')
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
+
+    # Initialize any missing sort_order values using id order
+    cursor.execute('''
+        UPDATE habits
+        SET sort_order = id
+        WHERE sort_order IS NULL
+    ''')
     
     # Create habit_entries table with unique constraint
     cursor.execute('''
@@ -88,7 +103,7 @@ def index():
 def get_habits():
     conn = sqlite3.connect('habits.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, name, icon, color FROM habits ORDER BY id')
+    cursor.execute('SELECT id, name, icon, color FROM habits ORDER BY sort_order ASC, id ASC')
     habits = [{'id': row[0], 'name': row[1], 'icon': row[2], 'color': row[3]} for row in cursor.fetchall()]
     conn.close()
     return jsonify(habits)
@@ -98,8 +113,10 @@ def create_habit():
     data = request.json
     conn = sqlite3.connect('habits.db')
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO habits (name, icon, color) VALUES (?, ?, ?)', 
-                   (data['name'], data['icon'], data.get('color', '#007bff')))
+    cursor.execute('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM habits')
+    next_sort_order = cursor.fetchone()[0]
+    cursor.execute('INSERT INTO habits (name, icon, color, sort_order) VALUES (?, ?, ?, ?)',
+                   (data['name'], data['icon'], data.get('color', '#007bff'), next_sort_order))
     habit_id = cursor.lastrowid
     conn.commit()
     conn.close()
@@ -126,6 +143,32 @@ def delete_habit(habit_id):
     conn.close()
     return jsonify({'success': True})
 
+@app.route('/api/habits/reorder', methods=['POST'])
+def reorder_habits():
+    data = request.json or {}
+    habit_ids = data.get('habit_ids', [])
+
+    if not isinstance(habit_ids, list):
+        return jsonify({'error': 'habit_ids must be a list'}), 400
+
+    conn = sqlite3.connect('habits.db')
+    cursor = conn.cursor()
+
+    try:
+        for order, habit_id in enumerate(habit_ids, start=1):
+            cursor.execute(
+                'UPDATE habits SET sort_order = ? WHERE id = ?',
+                (order, habit_id)
+            )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 400
+    finally:
+        conn.close()
+
+    return jsonify({'success': True})
+
 @app.route('/api/entries/<date>', methods=['GET'])
 def get_entries(date):
     conn = sqlite3.connect('habits.db')
@@ -134,7 +177,7 @@ def get_entries(date):
         SELECT h.id, h.name, h.icon, h.color, he.value 
         FROM habits h 
         LEFT JOIN habit_entries he ON h.id = he.habit_id AND he.entry_date = ?
-        ORDER BY h.id
+        ORDER BY h.sort_order ASC, h.id ASC
     ''', (date,))
     entries = []
     for row in cursor.fetchall():
@@ -161,7 +204,7 @@ def get_month_entries(year, month):
         end_date = f"{year}-{int(month)+1:0>2}-01"
     
     # First get all habits
-    cursor.execute('SELECT id FROM habits ORDER BY id')
+    cursor.execute('SELECT id FROM habits ORDER BY sort_order ASC, id ASC')
     habit_ids = [row[0] for row in cursor.fetchall()]
     
     # Then get all entries for the month
@@ -279,7 +322,12 @@ def import_csv():
                 habit_name, icon, entry_date, value = row[:4]
                 
                 # Insert habit if not exists
-                cursor.execute('INSERT INTO habits (name, icon) VALUES (?, ?)', (habit_name, icon))
+                cursor.execute('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM habits')
+                next_sort_order = cursor.fetchone()[0]
+                cursor.execute(
+                    'INSERT INTO habits (name, icon, sort_order) VALUES (?, ?, ?)',
+                    (habit_name, icon, next_sort_order)
+                )
                 habit_id = cursor.lastrowid
                 
                 # Insert entry if date is provided

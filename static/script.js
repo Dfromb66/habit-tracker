@@ -47,6 +47,7 @@ const availableColors = [
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    initializeTheme();
     updateTodayDate();
     updateCurrentMonth();
     loadHabits();
@@ -56,6 +57,21 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeSortable();
     setupAutoRefresh();
 });
+
+// Theme handling
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const themeSelect = document.getElementById('themeSelect');
+    applyTheme(savedTheme);
+    if (themeSelect) {
+        themeSelect.value = savedTheme;
+    }
+}
+
+function applyTheme(theme) {
+    document.body.classList.toggle('dark-mode', theme === 'dark');
+    localStorage.setItem('theme', theme);
+}
 
 // Update today's date display
 function updateTodayDate() {
@@ -81,8 +97,59 @@ async function loadHabits() {
     }
 }
 
+function getScrollState() {
+    const calendarContainer = document.querySelector('.calendar-container');
+    return {
+        windowY: window.scrollY,
+        calendarX: calendarContainer ? calendarContainer.scrollLeft : 0
+    };
+}
+
+function restoreScrollState(state) {
+    requestAnimationFrame(() => {
+        window.scrollTo(0, state.windowY);
+        const calendarContainer = document.querySelector('.calendar-container');
+        if (calendarContainer) {
+            calendarContainer.scrollLeft = state.calendarX;
+        }
+    });
+}
+
+function getHabitCell(habitId, date) {
+    const row = document.querySelector(`tr[data-habit-id="${habitId}"]`);
+    if (!row) return null;
+    const day = parseInt(date.split('-')[2], 10);
+    return row.cells[day] || null;
+}
+
+function updateEntryCell(habitId, date, value) {
+    const habit = habits.find(h => h.id === habitId);
+    const cell = getHabitCell(habitId, date);
+    if (!habit || !cell) return;
+
+    const iconColor = habit.color || '#007bff';
+    cell.classList.add('completed');
+    let html = `<i class="${habit.icon} habit-icon" style="color: ${iconColor}"></i>`;
+    if (value !== '✓') {
+        html += `<span class="value-text">${value}</span>`;
+    }
+    cell.querySelector('.habit-value').innerHTML = html;
+
+    if (!cell.querySelector('.edit-overlay')) {
+        const editOverlay = document.createElement('div');
+        editOverlay.className = 'edit-overlay';
+        editOverlay.textContent = 'e';
+        editOverlay.onclick = (e) => {
+            e.stopPropagation();
+            editEntry(habitId, date);
+        };
+        cell.appendChild(editOverlay);
+    }
+}
+
 // Render the calendar
 async function renderCalendar() {
+    const scrollState = getScrollState();
     const calendarBody = document.getElementById('calendarBody');
     const calendarTable = document.getElementById('calendarTable');
     
@@ -199,6 +266,8 @@ async function renderCalendar() {
         
         calendarBody.appendChild(row);
     }
+
+    restoreScrollState(scrollState);
 }
 
 // Populate cell with entry data from the loaded month data
@@ -434,6 +503,14 @@ function exportData() {
 
 // Setup event listeners
 function setupEventListeners() {
+    // Theme selector
+    const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect) {
+        themeSelect.addEventListener('change', function(e) {
+            applyTheme(e.target.value);
+        });
+    }
+
     // Habit form submission
     document.getElementById('habitForm').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -508,8 +585,12 @@ function setupEventListeners() {
             const result = await response.json();
             console.log('Response result:', result);
             
+            const { habitId, date } = editingEntryData;
+            const savedValue = value || '✓';
+            const savedScroll = getScrollState();
             closeEntryModal();
-            await renderCalendar();
+            updateEntryCell(habitId, date, savedValue);
+            restoreScrollState(savedScroll);
         } catch (error) {
             console.error('Error saving entry:', error);
         }
@@ -572,7 +653,7 @@ function initializeSortable() {
     new Sortable(calendarBody, {
         handle: '.drag-handle',
         animation: 150,
-        onEnd: function(evt) {
+        onEnd: async function(evt) {
             // Update habit order in the array
             const habitId = evt.item.getAttribute('data-habit-id');
             const oldIndex = evt.oldIndex;
@@ -581,6 +662,24 @@ function initializeSortable() {
             if (oldIndex !== newIndex) {
                 const habit = habits.splice(oldIndex, 1)[0];
                 habits.splice(newIndex, 0, habit);
+
+                // Persist new order so it survives page reloads
+                try {
+                    const orderedHabitIds = habits.map(h => h.id);
+                    const response = await fetch('/api/habits/reorder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ habit_ids: orderedHabitIds })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to save order (${response.status})`);
+                    }
+                } catch (error) {
+                    console.error('Error saving habit order:', error);
+                    alert('Could not save habit order. Please try again.');
+                    await loadHabits();
+                }
             }
         }
     });

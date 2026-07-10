@@ -2,6 +2,33 @@
 
 This guide covers different ways to deploy your Habit Tracker application.
 
+## GitHub
+
+The project repo is at [github.com/Dfromb66/habit-tracker](https://github.com/Dfromb66/habit-tracker).
+
+To push your latest local changes:
+
+```bash
+git add .
+git commit -m "Your commit message"
+git push origin main
+```
+
+If this is a new machine, clone first:
+
+```bash
+git clone https://github.com/Dfromb66/habit-tracker.git
+cd habit-tracker
+```
+
+## Netlify (important)
+
+**Netlify is not a good fit for this app.** Habit Tracker is a Flask app with a SQLite database and API routes. Netlify is built for static sites and short-lived serverless functions — it does not run a persistent Python web server.
+
+If you deploy only the HTML/CSS/JS to Netlify, the `/api/...` routes will not work and the tracker will not save data.
+
+**Recommended instead:** use [Render](#option-1-render-recommended) or [Railway](#option-3-railway). Both connect to GitHub and deploy Flask apps with a workflow similar to Netlify.
+
 ## Local Development
 
 The simplest way to run the application is locally for development:
@@ -14,7 +41,26 @@ Then visit `http://localhost:5000` in your browser.
 
 ## Production Deployment
 
-### Option 1: Heroku
+### Option 1: Render (recommended)
+
+Render works well with GitHub and Flask.
+
+1. **Push your code to GitHub** (see [GitHub](#github) above).
+
+2. **Sign up** at [render.com](https://render.com) and connect your GitHub account.
+
+3. **Create a new Web Service**:
+   - Click **New +** → **Web Service**
+   - Select the `habit-tracker` repository
+   - Render can auto-detect settings from `render.yaml`, or set manually:
+     - **Build Command:** `pip install -r requirements.txt`
+     - **Start Command:** `gunicorn app:app`
+
+4. **Deploy.** Render builds and starts the app. You will get a URL like `https://habit-tracker-xxxx.onrender.com`.
+
+5. **Note on data:** On the free plan, the SQLite database may reset when the service sleeps or redeploys. For long-term personal use, consider a paid persistent disk or keep using PythonAnywhere.
+
+### Option 2: Heroku
 
 1. **Install Heroku CLI** and login:
    ```bash
@@ -45,7 +91,7 @@ Then visit `http://localhost:5000` in your browser.
    git push heroku main
    ```
 
-### Option 2: Python Anywhere
+### Option 3: Python Anywhere
 
 1. **Sign up** for a free account at [PythonAnywhere](https://www.pythonanywhere.com/)
 
@@ -64,7 +110,7 @@ Then visit `http://localhost:5000` in your browser.
 
 5. **Configure the WSGI file** to point to your app.py
 
-### Option 3: Railway
+### Option 4: Railway
 
 1. **Sign up** for [Railway](https://railway.app/)
 
@@ -74,7 +120,7 @@ Then visit `http://localhost:5000` in your browser.
 
 4. **Add environment variables** if needed
 
-### Option 4: VPS (DigitalOcean, AWS, etc.)
+### Option 5: VPS (DigitalOcean, AWS, etc.)
 
 1. **Set up a VPS** with Ubuntu/Debian
 

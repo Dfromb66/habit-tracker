@@ -23,23 +23,23 @@ body {
 .header {
     background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     color: white;
-    padding: 30px;
+    padding: 14px 20px;
     text-align: center;
 }
 
 .header h1 {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
+    font-size: 1.8rem;
+    margin-bottom: 4px;
     font-weight: 700;
 }
 
 .today-date {
-    font-size: 1.2rem;
+    font-size: 0.95rem;
     opacity: 0.9;
 }
 
 .controls {
-    padding: 20px 30px;
+    padding: 12px 20px;
     background: #f8f9fa;
     border-bottom: 1px solid #e9ecef;
     display: flex;
@@ -82,6 +82,23 @@ body {
 .action-buttons {
     display: flex;
     gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.theme-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.theme-select {
+    padding: 8px 10px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    background: white;
+    color: #333;
+    font-size: 0.95rem;
+    cursor: pointer;
 }
 
 .btn {
@@ -463,6 +480,101 @@ body {
 
 .completed .habit-icon {
     color: #28a745;
+}
+
+body.dark-mode {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #e2e8f0;
+}
+
+body.dark-mode .container {
+    background: #111827;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.45);
+}
+
+body.dark-mode .header {
+    background: linear-gradient(135deg, #0369a1 0%, #0891b2 100%);
+}
+
+body.dark-mode .controls {
+    background: #1f2937;
+    border-bottom: 1px solid #374151;
+}
+
+body.dark-mode .theme-label,
+body.dark-mode .current-month,
+body.dark-mode .habit-name,
+body.dark-mode .modal-title,
+body.dark-mode .form-group label {
+    color: #e5e7eb;
+}
+
+body.dark-mode .theme-select,
+body.dark-mode .form-group input,
+body.dark-mode .form-group select,
+body.dark-mode .color-grid,
+body.dark-mode .icon-grid {
+    background: #111827;
+    color: #e5e7eb;
+    border-color: #374151;
+}
+
+body.dark-mode .calendar th {
+    background: #1f2937;
+    color: #cbd5e1;
+    border-bottom: 2px solid #374151;
+    border-right: 1px solid #374151;
+}
+
+body.dark-mode .calendar thead tr:first-child th {
+    background: #111827;
+    color: #94a3b8;
+    border-bottom: 1px solid #374151;
+}
+
+body.dark-mode .calendar td,
+body.dark-mode .calendar th:first-child,
+body.dark-mode .calendar td:first-child {
+    border-right: 1px solid #374151;
+    border-bottom: 1px solid #374151;
+}
+
+body.dark-mode .habit-row {
+    background: #1f2937;
+    border-bottom: 2px solid #374151;
+}
+
+body.dark-mode .calendar td.weekend {
+    background-color: #0b1220;
+}
+
+body.dark-mode .habit-cell:hover {
+    background: #243041;
+}
+
+body.dark-mode .today {
+    background: #1d4ed8 !important;
+    border: 2px solid #60a5fa !important;
+    box-shadow: 0 0 5px rgba(96, 165, 250, 0.45);
+}
+
+body.dark-mode .completed {
+    background: #064e3b !important;
+    color: #d1fae5;
+}
+
+body.dark-mode .modal-content {
+    background-color: #111827;
+    color: #e5e7eb;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.55);
+}
+
+body.dark-mode .close {
+    color: #9ca3af;
+}
+
+body.dark-mode .close:hover {
+    color: #f9fafb;
 }
 
 @media (max-width: 768px) {
