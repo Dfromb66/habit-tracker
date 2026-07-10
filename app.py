@@ -317,23 +317,32 @@ def import_csv():
         cursor.execute('DELETE FROM habits')
         
         # Import new data
+        habit_cache = {}
+        next_sort_order = 1
+
         for row in csv_data:
             if len(row) >= 4:
                 habit_name, icon, entry_date, value = row[:4]
-                
-                # Insert habit if not exists
-                cursor.execute('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM habits')
-                next_sort_order = cursor.fetchone()[0]
-                cursor.execute(
-                    'INSERT INTO habits (name, icon, sort_order) VALUES (?, ?, ?)',
-                    (habit_name, icon, next_sort_order)
-                )
-                habit_id = cursor.lastrowid
-                
-                # Insert entry if date is provided
+                habit_name = habit_name.strip()
+                icon = icon.strip()
+
+                if habit_name not in habit_cache:
+                    cursor.execute(
+                        'INSERT INTO habits (name, icon, sort_order) VALUES (?, ?, ?)',
+                        (habit_name, icon, next_sort_order)
+                    )
+                    habit_cache[habit_name] = cursor.lastrowid
+                    next_sort_order += 1
+
+                habit_id = habit_cache[habit_name]
+
                 if entry_date and entry_date.strip():
-                    cursor.execute('INSERT INTO habit_entries (habit_id, entry_date, value) VALUES (?, ?, ?)',
-                                 (habit_id, entry_date, value))
+                    if value == 'COMPLETED':
+                        value = '✓'
+                    cursor.execute(
+                        'INSERT OR REPLACE INTO habit_entries (habit_id, entry_date, value) VALUES (?, ?, ?)',
+                        (habit_id, entry_date.strip(), value)
+                    )
         
         conn.commit()
         conn.close()
