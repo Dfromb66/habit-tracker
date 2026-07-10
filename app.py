@@ -265,24 +265,30 @@ def export_csv():
     conn = sqlite3.connect('habits.db')
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT h.name, h.icon, he.entry_date, he.value
+        SELECT h.name, h.icon, h.color, h.sort_order, he.entry_date, he.value
         FROM habits h
         LEFT JOIN habit_entries he ON h.id = he.habit_id
-        ORDER BY h.name, he.entry_date
+        ORDER BY h.sort_order ASC, h.id ASC, he.entry_date
     ''')
     
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Habit Name', 'Icon', 'Date', 'Value'])
+    writer.writerow(['Habit Name', 'Icon', 'Color', 'Sort Order', 'Date', 'Value'])
     
     for row in cursor.fetchall():
-        # Handle the checkmark symbol properly
-        habit_name, icon, entry_date, value = row
+        habit_name, icon, color, sort_order, entry_date, value = row
         if value == '✓':
-            value = 'COMPLETED'  # Replace checkmark with readable text
+            value = 'COMPLETED'
         elif value is None:
-            value = ''  # Handle NULL values
-        writer.writerow([habit_name, icon, entry_date, value])
+            value = ''
+        writer.writerow([
+            habit_name,
+            icon,
+            color or '#007bff',
+            sort_order or '',
+            entry_date or '',
+            value
+        ])
     
     conn.close()
     
@@ -307,7 +313,12 @@ def import_csv():
         # Read CSV file
         content = file.read().decode('utf-8')
         csv_data = csv.reader(io.StringIO(content))
-        next(csv_data)  # Skip header row
+        header = next(csv_data, None)
+        if not header:
+            return jsonify({'error': 'CSV file is empty'}), 400
+
+        header_lower = [col.strip().lower() for col in header]
+        new_format = 'color' in header_lower
         
         conn = sqlite3.connect('habits.db')
         cursor = conn.cursor()
@@ -321,28 +332,42 @@ def import_csv():
         next_sort_order = 1
 
         for row in csv_data:
-            if len(row) >= 4:
+            if new_format and len(row) >= 6:
+                habit_name, icon, color, sort_order, entry_date, value = row[:6]
+                habit_name = habit_name.strip()
+                icon = icon.strip()
+                color = color.strip() or '#007bff'
+                try:
+                    sort_order = int(sort_order)
+                except (TypeError, ValueError):
+                    sort_order = next_sort_order
+            elif len(row) >= 4:
                 habit_name, icon, entry_date, value = row[:4]
                 habit_name = habit_name.strip()
                 icon = icon.strip()
+                color = '#007bff'
+                sort_order = next_sort_order
+            else:
+                continue
 
-                if habit_name not in habit_cache:
-                    cursor.execute(
-                        'INSERT INTO habits (name, icon, sort_order) VALUES (?, ?, ?)',
-                        (habit_name, icon, next_sort_order)
-                    )
-                    habit_cache[habit_name] = cursor.lastrowid
+            if habit_name not in habit_cache:
+                cursor.execute(
+                    'INSERT INTO habits (name, icon, color, sort_order) VALUES (?, ?, ?, ?)',
+                    (habit_name, icon, color, sort_order)
+                )
+                habit_cache[habit_name] = cursor.lastrowid
+                if not new_format:
                     next_sort_order += 1
 
-                habit_id = habit_cache[habit_name]
+            habit_id = habit_cache[habit_name]
 
-                if entry_date and entry_date.strip():
-                    if value == 'COMPLETED':
-                        value = '✓'
-                    cursor.execute(
-                        'INSERT OR REPLACE INTO habit_entries (habit_id, entry_date, value) VALUES (?, ?, ?)',
-                        (habit_id, entry_date.strip(), value)
-                    )
+            if entry_date and entry_date.strip():
+                if value == 'COMPLETED':
+                    value = '✓'
+                cursor.execute(
+                    'INSERT OR REPLACE INTO habit_entries (habit_id, entry_date, value) VALUES (?, ?, ?)',
+                    (habit_id, entry_date.strip(), value)
+                )
         
         conn.commit()
         conn.close()
