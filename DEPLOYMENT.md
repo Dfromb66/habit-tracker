@@ -49,14 +49,21 @@ Render works well with GitHub and Flask.
 
 2. **Sign up** at [render.com](https://render.com) and connect your GitHub account.
 
-3. **Create a new Web Service**:
+3. **Create a new Web Service** (not a Static Site):
    - Click **New +** → **Web Service**
    - Select the `habit-tracker` repository
+   - **Important:** leave **Publish Directory** blank. Do not set it to `static` or `templates`.
    - Render can auto-detect settings from `render.yaml`, or set manually:
+     - **Runtime:** Python
      - **Build Command:** `pip install -r requirements.txt`
-     - **Start Command:** `gunicorn app:app`
+     - **Start Command:** `gunicorn --bind 0.0.0.0:$PORT app:app`
 
 4. **Deploy.** Render builds and starts the app. You will get a URL like `https://habit-tracker-xxxx.onrender.com`.
+
+5. **Verify it worked:**
+   - Open your site URL — you should see the habit tracker page.
+   - Open `https://your-app.onrender.com/api/habits` — you should see `[]` (an empty JSON list), not `Not Found`.
+   - If `/api/habits` says Not Found, the service is still configured as a static site or the start command is wrong. Delete the service and recreate it as a **Web Service**.
 
 5. **Note on data:** On the free plan, the SQLite database may reset when the service sleeps or redeploys. For long-term personal use, consider a paid persistent disk or keep using PythonAnywhere.
 
